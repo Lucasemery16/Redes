@@ -20,8 +20,6 @@ redes/
 │   ├── MANUAL_UTILIZACAO.md   # Manual do usuário
 │   └── RELATORIO_TECNICO.md   # Relatório técnico
 ├── requirements.txt           # Dependências Python
-├── run_server.sh             # Script para executar servidor
-├── run_client.sh             # Script para executar cliente
 └── README.md                 # Este arquivo
 ```
 
@@ -69,8 +67,8 @@ python src/server.py
 # Com parâmetros
 python src/server.py --host 0.0.0.0 --port 9999
 
-# Usando script
-./run_server.sh
+# Execução direta
+python src/server.py
 ```
 
 ### Cliente
@@ -84,8 +82,8 @@ python src/client.py 192.168.1.100 8888
 # Com configurações avançadas
 python src/client.py localhost 8888 --max-size 200 --mode SELECTIVE_REPEAT --encrypt --error-sim
 
-# Usando script
-./run_client.sh
+# Execução direta
+python src/client.py
 ```
 
 ### Teste do Handshake
@@ -235,8 +233,6 @@ src/
 ├── protocol.py            # Definições das mensagens de handshake
 └── utils.py               # Utilitários básicos (checksum, etc.)
 
-run_client.sh              # Script para executar cliente
-run_server.sh              # Script para executar servidor
 tests/test_basic.py        # Testes básicos
 README.md                  # Documentação
 ```
