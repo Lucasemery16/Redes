@@ -3,16 +3,17 @@
 ## 📋 Descrição
 Aplicação cliente-servidor que implementa transporte confiável de dados na camada de aplicação, considerando um canal com perdas e erros. Este projeto demonstra todos os conceitos fundamentais de transporte confiável de dados em redes de computadores.
 
+**🎯 Status do Projeto:** ✅ **HANDSHAKE INICIAL IMPLEMENTADO** - Pronto para entrega do Checkpoint 1
+
 ## 🏗️ Estrutura do Projeto
 ```
 redes/
 ├── src/
-│   ├── client.py              # Cliente da aplicação
-│   ├── server.py              # Servidor da aplicação
-│   ├── protocol.py            # Definições do protocolo
+│   ├── client.py              # Cliente da aplicação com handshake
+│   ├── server.py              # Servidor da aplicação com handshake
+│   ├── protocol.py            # Definições do protocolo e mensagens
 │   ├── reliable_transport.py  # Implementação do transporte confiável
-│   ├── utils.py               # Utilitários (checksum, criptografia)
-│   └── test_demo.py           # Script de demonstração
+│   └── utils.py               # Utilitários (checksum, criptografia)
 ├── tests/
 │   └── test_basic.py          # Testes unitários
 ├── docs/
@@ -26,7 +27,15 @@ redes/
 
 ## ✨ Características Implementadas
 
-### Características Obrigatórias
+### 🎯 Checkpoint 1 - Handshake Inicial (IMPLEMENTADO)
+- ✅ **Conexão via Socket**: Cliente e servidor conectam via TCP
+- ✅ **Handshake Inicial**: Troca de parâmetros de configuração
+- ✅ **Modo de Operação**: Negociação entre GO_BACK_N e SELECTIVE_REPEAT
+- ✅ **Tamanho Máximo**: Definição do tamanho máximo de mensagem
+- ✅ **Validação de Parâmetros**: Verificação de compatibilidade
+- ✅ **Configuração de Janela**: Definição do tamanho da janela deslizante
+
+### Características Obrigatórias (Implementadas)
 - ✅ **Soma de verificação (checksum)**: Detecção de erros usando MD5
 - ✅ **Temporizador**: Controle de timeout para retransmissões
 - ✅ **Número de sequência**: Controle de ordem dos pacotes
@@ -79,18 +88,32 @@ python src/client.py localhost 8888 --max-size 200 --mode SELECTIVE_REPEAT --enc
 ./run_client.sh
 ```
 
-### Demonstração Automática
+### Teste do Handshake
 ```bash
-# Executa servidor e cliente automaticamente
-python src/test_demo.py
+# Terminal 1 - Inicia o servidor
+python src/server.py
+
+# Terminal 2 - Conecta o cliente (handshake automático)
+python src/client.py
+# O handshake será executado automaticamente na conexão
 ```
 
 ## 🔧 Protocolo de Aplicação
 
-### Handshake Inicial
-1. Cliente envia `HANDSHAKE_REQUEST` com configurações
-2. Servidor responde com `HANDSHAKE_RESPONSE` confirmando parâmetros
-3. Comunicação estabelecida com transporte confiável
+### Handshake Inicial (IMPLEMENTADO)
+1. **Cliente** → Envia `HANDSHAKE_REQUEST` com:
+   - `max_message_size`: Tamanho máximo de mensagem (mín. 30 caracteres)
+   - `operation_mode`: GO_BACK_N ou SELECTIVE_REPEAT
+   - `encryption_enabled`: Habilitação de criptografia (opcional)
+
+2. **Servidor** → Responde com `HANDSHAKE_RESPONSE`:
+   - `accepted`: True/False (aceita ou rejeita a conexão)
+   - `window_size`: Tamanho da janela deslizante (1-5)
+   - `operation_mode`: Modo confirmado
+   - `error_message`: Mensagem de erro (se rejeitado)
+
+3. **Validação**: Servidor valida parâmetros e configura transporte confiável
+4. **Estabelecimento**: Comunicação estabelecida com transporte confiável
 
 ### Estrutura das Mensagens
 ```json
@@ -113,7 +136,36 @@ python src/test_demo.py
 
 ## 📊 Exemplos de Uso
 
-### Exemplo 1: Comunicação Básica
+### Exemplo 1: Teste do Handshake (Checkpoint 1)
+```bash
+# Terminal 1 - Servidor
+python src/server.py
+# Saída esperada:
+# 🚀 Servidor iniciado em localhost:8888
+# 📊 Configurações:
+#    - Tamanho máximo de mensagem: 100 caracteres
+#    - Tamanho da janela: 5
+#    - Modo de operação: GO_BACK_N
+# 🔗 Nova conexão de ('127.0.0.1', 54321)
+# ✅ Handshake aceito para ('127.0.0.1', 54321)
+#    - Tamanho máximo: 100
+#    - Modo: GO_BACK_N
+#    - Janela: 5
+
+# Terminal 2 - Cliente
+python src/client.py
+# Saída esperada:
+# 🔗 Conectado ao servidor localhost:8888
+# 📤 Handshake enviado:
+#    - Tamanho máximo: 100
+#    - Modo: GO_BACK_N
+#    - Criptografia: Não
+# ✅ Handshake aceito pelo servidor:
+#    - Janela: 5
+#    - Modo: GO_BACK_N
+```
+
+### Exemplo 2: Comunicação Básica
 ```bash
 # Terminal 1 - Servidor
 python src/server.py
@@ -123,19 +175,33 @@ python src/client.py
 cliente> Esta é uma mensagem de teste com mais de 30 caracteres para validar o protocolo.
 ```
 
-### Exemplo 2: Com Simulação de Erros
+### Exemplo 3: Com Simulação de Erros
 ```bash
 python src/client.py localhost 8888 --error-sim --error-prob 0.3
 cliente> Esta mensagem terá erros simulados para testar a robustez do sistema.
 ```
 
-### Exemplo 3: Com Criptografia
+### Exemplo 4: Com Criptografia
 ```bash
 python src/client.py localhost 8888 --encrypt
 cliente> Esta mensagem está criptografada para garantir a segurança dos dados.
 ```
 
 ## 🧪 Testes
+
+### Teste do Handshake (Checkpoint 1)
+```bash
+# 1. Inicie o servidor
+python src/server.py
+
+# 2. Em outro terminal, conecte o cliente
+python src/client.py
+
+# 3. Observe a saída do handshake:
+# - Cliente envia parâmetros
+# - Servidor valida e responde
+# - Conexão estabelecida
+```
 
 ### Executar Testes Unitários
 ```bash
@@ -156,10 +222,24 @@ python tests/test_basic.py
 
 Este projeto atende aos requisitos do Trabalho I da disciplina de Redes de Computadores:
 
-### Checkpoint 1 (22/09/2025) - 20%
+### Checkpoint 1 (22/09/2025) - 20% ✅ CONCLUÍDO
 - ✅ Aplicações cliente e servidor conectam via socket
 - ✅ Handshake inicial implementado
 - ✅ Troca de modo de operação e tamanho máximo
+
+#### 📁 Arquivos para Entrega do Checkpoint 1:
+```
+src/
+├── client.py              # Cliente com handshake implementado
+├── server.py              # Servidor com handshake implementado
+├── protocol.py            # Definições das mensagens de handshake
+└── utils.py               # Utilitários básicos (checksum, etc.)
+
+run_client.sh              # Script para executar cliente
+run_server.sh              # Script para executar servidor
+tests/test_basic.py        # Testes básicos
+README.md                  # Documentação
+```
 
 ### Checkpoint 2 (27/10/2025) - 40%
 - ✅ Troca de mensagens entre cliente e servidor
