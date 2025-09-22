@@ -89,7 +89,6 @@ python src/client.py
 
 ### Documentação
 ```
-README.md                  # Documentação principal
 ENTREGA_1.md              # Este documento
 ```
 
