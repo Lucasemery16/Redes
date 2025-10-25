@@ -116,10 +116,18 @@ class ReliableClient:
         """
         try:
             # Cria requisição de handshake
+            # Se criptografia habilitada, garante gerenciador e envia chave no handshake
+            encryption_key_str = None
+            if self.encryption_enabled:
+                if not self.encryption_manager:
+                    self.encryption_manager = EncryptionManager()
+                encryption_key_str = self.encryption_manager.get_key().decode('utf-8')
+            
             handshake_request = HandshakeRequest(
                 max_message_size=self.max_message_size,
                 operation_mode=self.operation_mode,
-                encryption_enabled=self.encryption_enabled
+                encryption_enabled=self.encryption_enabled,
+                encryption_key=encryption_key_str
             )
             
             # Envia handshake

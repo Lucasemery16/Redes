@@ -237,11 +237,32 @@ class ReliableServer:
                 client_data['max_message_size'] = max_message_size
                 client_data['operation_mode'] = operation_mode
                 
-                # Configura criptografia se solicitado
+                # Configura criptografia se solicitado: usa a chave enviada pelo cliente
                 if encryption_enabled:
-                    self.encryption_manager = EncryptionManager()
-                    client_data['encryption_enabled'] = True
-                    client_data['encryption_key'] = self.encryption_manager.get_key()
+                    # Obtém a chave enviada pelo cliente (string base64 compatível com Fernet)
+                    client_key_str = message.metadata.get('encryption_key')
+                    if not client_key_str:
+                        # Sem chave enviada, rejeita handshake
+                        response = HandshakeResponse(
+                            accepted=False,
+                            error_message="Criptografia solicitada sem envio de chave"
+                        )
+                        self._send_to_client(client_socket, response)
+                        return
+                    try:
+                        client_key_bytes = client_key_str.encode('utf-8')
+                        # Cria gerenciador com a chave do cliente
+                        client_encryption_manager = EncryptionManager(client_key_bytes)
+                        client_data['encryption_enabled'] = True
+                        client_data['encryption_key'] = client_key_bytes
+                        client_data['encryption_manager'] = client_encryption_manager
+                    except Exception as e:
+                        response = HandshakeResponse(
+                            accepted=False,
+                            error_message=f"Chave de criptografia inválida: {e}"
+                        )
+                        self._send_to_client(client_socket, response)
+                        return
                 
                 response = HandshakeResponse(
                     accepted=True,
@@ -302,10 +323,13 @@ class ReliableServer:
         if message.metadata.get('is_final', False):
             complete_message = client_data['message_buffer']
             
-            # Descriptografa se necessário
+            # Descriptografa se necessário (usa o gerenciador específico deste cliente)
             if client_data.get('encryption_enabled', False):
                 try:
-                    complete_message = self.encryption_manager.decrypt(complete_message)
+                    enc_mgr = client_data.get('encryption_manager')
+                    if not enc_mgr:
+                        raise ValueError("Encryption manager não configurado para o cliente")
+                    complete_message = enc_mgr.decrypt(complete_message)
                 except Exception as e:
                     print(f"❌ Erro ao descriptografar: {e}")
                     return

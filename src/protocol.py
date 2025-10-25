@@ -80,13 +80,16 @@ class HandshakeRequest(ProtocolMessage):
     """Mensagem de handshake do cliente"""
     
     def __init__(self, max_message_size: int, operation_mode: OperationMode, 
-                 encryption_enabled: bool = False):
+                 encryption_enabled: bool = False, encryption_key: Optional[str] = None):
         super().__init__(MessageType.HANDSHAKE_REQUEST)
         self.metadata = {
             'max_message_size': max_message_size,
             'operation_mode': operation_mode.value,
             'encryption_enabled': encryption_enabled
         }
+        # Inclui a chave de criptografia, se fornecida (Fernet base64 string)
+        if encryption_enabled and encryption_key:
+            self.metadata['encryption_key'] = encryption_key
 
 class HandshakeResponse(ProtocolMessage):
     """Resposta do servidor ao handshake"""
