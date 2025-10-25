@@ -60,6 +60,9 @@ class ReliableClient:
             'deterministic_char_index': 0
         }
         
+        # Tamanho do payload por pacote (default 4, ajustável por CLI)
+        self.packet_payload_size = 4
+        
         # Buffer de mensagens
         self.message_queue = []
         self.current_message = ""
@@ -214,17 +217,25 @@ class ReliableClient:
             if self.encryption_enabled and self.encryption_manager:
                 message = self.encryption_manager.encrypt(message)
             
-            # Divide mensagem em pacotes
-            packets = split_message(message, 4)  # Máximo 4 caracteres por pacote
+            # Divide mensagem em pacotes de tamanho configurado
+            max_payload = max(1, min(4, int(getattr(self, 'packet_payload_size', 4))))
+            packets = split_message(message, max_payload)
             
             print(f"📤 Enviando mensagem: '{message[:50]}{'...' if len(message) > 50 else ''}'")
             print(f"   - Tamanho: {len(message)} caracteres")
             print(f"   - Pacotes: {len(packets)}")
             print("-" * 50)
             
-            # Envia cada pacote
+            # Envia cada pacote (mostra janelas conforme tamanho da janela negociada)
             for i, packet in enumerate(packets):
                 is_final = (i == len(packets) - 1)
+                # Exibição de janelas
+                try:
+                    current_window = self.transport.window_size if self.transport else 1
+                except Exception:
+                    current_window = 1
+                if i % max(1, current_window) == 0:
+                    print(f"[Janela {(i // max(1, current_window)) + 1}]")
                 
                 # Simula erro se habilitado
                 if self.error_simulation['enabled']:
@@ -399,6 +410,7 @@ def main():
                        default='random', help='Tipo de erro para simulação')
     parser.add_argument('--error-prob', type=float, default=0.1, 
                        help='Probabilidade de erro (0.0-1.0)')
+    parser.add_argument('--chunk-size', type=int, default=4, help='Tamanho por pacote (1-4 caracteres)')
     
     args = parser.parse_args()
     
@@ -414,6 +426,9 @@ def main():
     
     if args.error_sim:
         client.set_error_simulation(True, args.error_type, args.error_prob)
+    
+    # Define tamanho de payload por pacote (1-4)
+    client.packet_payload_size = max(1, min(4, int(args.chunk_size)))
     
     try:
         # Conecta ao servidor

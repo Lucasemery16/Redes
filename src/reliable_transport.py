@@ -220,6 +220,22 @@ class ReliableTransport:
             
             log_message("RECV", "ACK", f"Seq: {seq_num:03d} | Window: {message.window_size}")
         
+        # Se todos os pacotes da janela atual foram confirmados, imprime acknowledge resumido
+        # para simular "ACK1 e 2", "ACK3 e 4", etc.
+        if self.operation_mode == OperationMode.GO_BACK_N:
+            try:
+                # Determina o tamanho da janela atual
+                win_size = max(1, self.window_size)
+                # O último ack recebido pertence ao bloco (seq // win_size)
+                last_block_end = ((seq_num // win_size) + 1) * win_size - 1
+                # Se não há pendentes neste bloco, podemos imprimir um resumo
+                block_start = (seq_num // win_size) * win_size
+                block_done = all(((n not in self.pending_packets) for n in range(block_start, last_block_end + 1)))
+                if block_done:
+                    print(f"← ACK {block_start+1} e {last_block_end+1}")
+            except Exception:
+                pass
+        
         return True
     
     def _handle_nack_message(self, message: NackMessage) -> bool:
