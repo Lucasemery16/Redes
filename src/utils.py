@@ -79,6 +79,39 @@ def introduce_error(data: str, error_type: str = "random") -> str:
     
     return data
 
+def introduce_error_at(data: str, index: int = 0, error_type: str = "random") -> str:
+    """
+    Introduz um erro de forma determinística na posição especificada.
+    
+    Args:
+        data: String original
+        index: Índice do caractere a ser alterado (0-based). Se fora do
+               intervalo, usa o último caractere disponível.
+        error_type: Tipo de erro ("random", "bit_flip", "character_change")
+    
+    Returns:
+        str: String com erro introduzido na posição especificada
+    """
+    if not data:
+        return data
+    if index < 0:
+        index = 0
+    if index >= len(data):
+        index = len(data) - 1
+    
+    if error_type == "random":
+        # Muda o caractere exatamente nesta posição
+        new_char = chr((ord(data[index]) + 1) % 256)
+        return data[:index] + new_char + data[index + 1:]
+    elif error_type == "bit_flip":
+        char_code = ord(data[index])
+        new_char_code = char_code ^ 1  # Flip LSB
+        new_char = chr(new_char_code)
+        return data[:index] + new_char + data[index + 1:]
+    elif error_type == "character_change":
+        return data[:index] + 'X' + data[index + 1:]
+    return data
+
 def simulate_packet_loss(probability: float = 0.1) -> bool:
     """
     Simula perda de pacote baseada em probabilidade

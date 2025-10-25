@@ -19,7 +19,7 @@ from reliable_transport import ReliableTransport
 from utils import (
     split_message, format_metadata, log_message, 
     validate_message_size, get_current_timestamp,
-    introduce_error, EncryptionManager
+    introduce_error, introduce_error_at, EncryptionManager
 )
 
 class ReliableClient:
@@ -51,7 +51,13 @@ class ReliableClient:
         self.error_simulation = {
             'enabled': False,
             'error_type': 'random',
-            'error_probability': 0.1
+            'error_probability': 0.1,
+            # Plano determinístico: lista de índices de pacotes a corromper
+            # Ex.: [0, 3] irá corromper o 1º e o 4º pacote enviados
+            'deterministic_packets': [],
+            # Para corromper caractere específico dentro do payload
+            # Ex.: 0 para primeiro caractere de cada pacote corrompido
+            'deterministic_char_index': 0
         }
         
         # Buffer de mensagens
@@ -222,8 +228,18 @@ class ReliableClient:
                 
                 # Simula erro se habilitado
                 if self.error_simulation['enabled']:
-                    if self._should_introduce_error():
+                    injected = False
+                    # Modo determinístico: se o índice do pacote estiver no plano, corrompe
+                    if self.error_simulation['deterministic_packets']:
+                        if i in self.error_simulation['deterministic_packets']:
+                            char_idx = self.error_simulation.get('deterministic_char_index', 0)
+                            packet = introduce_error_at(packet, char_idx, self.error_simulation['error_type'])
+                            injected = True
+                    # Modo probabilístico (fallback)
+                    if not injected and self._should_introduce_error():
                         packet = introduce_error(packet, self.error_simulation['error_type'])
+                        injected = True
+                    if injected:
                         self.stats['errors_introduced'] += 1
                         print(f"⚠️  Erro introduzido no pacote {i+1}")
                 
@@ -316,7 +332,9 @@ class ReliableClient:
         self.error_simulation = {
             'enabled': enabled,
             'error_type': error_type,
-            'error_probability': probability
+            'error_probability': probability,
+            'deterministic_packets': self.error_simulation.get('deterministic_packets', []),
+            'deterministic_char_index': self.error_simulation.get('deterministic_char_index', 0)
         }
         
         status = "habilitada" if enabled else "desabilitada"
@@ -324,6 +342,25 @@ class ReliableClient:
         if enabled:
             print(f"   - Tipo: {error_type}")
             print(f"   - Probabilidade: {probability}")
+
+    def set_deterministic_error_plan(self, packet_indices: list, char_index: int = 0, error_type: Optional[str] = None):
+        """
+        Define um plano determinístico de injeção de erros no cliente.
+        
+        Args:
+            packet_indices: Lista com índices (0-based) dos pacotes a corromper
+            char_index: Índice do caractere a corromper dentro do payload
+            error_type: Opcional, sobrescreve o tipo de erro para o plano
+        """
+        self.error_simulation['deterministic_packets'] = packet_indices or []
+        self.error_simulation['deterministic_char_index'] = max(0, char_index)
+        if error_type:
+            self.error_simulation['error_type'] = error_type
+        self.error_simulation['enabled'] = True
+        print("🔧 Plano determinístico de erros configurado")
+        print(f"   - Pacotes a corromper: {self.error_simulation['deterministic_packets']}")
+        print(f"   - Índice do caractere: {self.error_simulation['deterministic_char_index']}")
+        print(f"   - Tipo de erro: {self.error_simulation['error_type']}")
     
     def get_stats(self) -> Dict[str, Any]:
         """Retorna estatísticas do cliente"""
@@ -388,6 +425,7 @@ def main():
         print("   - Digite uma mensagem para enviar")
         print("   - 'stats': Exibe estatísticas")
         print("   - 'error <on|off>': Liga/desliga simulação de erros")
+        print("   - 'error-plan <idxs> [char=<n>] [type=<t>]': Plano determinístico (ex.: 0,2,5)")
         print("   - 'quit': Desconecta e sai")
         print()
         
@@ -407,6 +445,23 @@ def main():
                         client.set_error_simulation(enabled)
                     else:
                         print("❌ Uso: error <on|off>")
+                elif user_input.startswith('error-plan '):
+                    try:
+                        # Formato: error-plan 0,2,5 char=1 type=bit_flip
+                        arg = user_input[len('error-plan '):].strip()
+                        tokens = arg.split()
+                        idxs_token = tokens[0] if tokens else ''
+                        packet_idxs = [int(x) for x in idxs_token.split(',') if x != ''] if idxs_token else []
+                        char_index = 0
+                        err_type = None
+                        for t in tokens[1:]:
+                            if t.startswith('char='):
+                                char_index = int(t.split('=', 1)[1])
+                            elif t.startswith('type='):
+                                err_type = t.split('=', 1)[1]
+                        client.set_deterministic_error_plan(packet_idxs, char_index, err_type)
+                    except Exception as e:
+                        print(f"❌ Uso: error-plan <idxs> [char=<n>] [type=<t>]  | Erro: {e}")
                 elif user_input:
                     # Envia mensagem
                     client.send_message(user_input)
